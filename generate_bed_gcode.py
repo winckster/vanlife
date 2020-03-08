@@ -5,11 +5,15 @@ FAR_ABOVE = 50
 LENGTH_PADDING = 5
 DEFAULT_SPEED = 3000
 
-def _format(x, y, z, f=DEFAULT_SPEED):
 
-    return f'G1 X{x} Y{y} Z{z} F{f}\n'
-
-def _write(write_fn, width, x_stop, y_step, z_step, num_steps):
+def _write(write_fn, width, x_stop, y_step, z_step, num_steps, newline=False):
+    if newline:
+        def _format(x, y, z, f=DEFAULT_SPEED):
+            return f'G1 X{x} Y{y} Z{z} F{f}\n'
+    else:
+        def _format(x, y, z, f=DEFAULT_SPEED):
+            return f'G1 X{x} Y{y} Z{z} F{f}'
+    
     write_fn(_format(0, width, FAR_ABOVE, 300))
     write_fn(_format(0, width, 0, 300))
     write_fn(_format(x_stop, width, 0))
@@ -23,7 +27,7 @@ def _write(write_fn, width, x_stop, y_step, z_step, num_steps):
         write_fn(_format(x_stop, width - left * y_step, -left * z_step))
     write_fn(_format(x_stop, width - left * y_step, FAR_ABOVE))
 
-def main(length, width, depth, max_step=1, path=None, radius=None):
+def main(length, width, depth, max_step=1, path=None, radius=0):
     x_stop = length + LENGTH_PADDING
     width -= radius
 
@@ -41,7 +45,8 @@ def main(length, width, depth, max_step=1, path=None, radius=None):
         _write(print, width, x_stop, y_step, z_step, num_steps)
     else:
         with open(path, 'w') as writer:
-            _write(writer.write, width, x_stop, y_step, z_step, num_steps)
+            _write(writer.write, width, x_stop, y_step, z_step, num_steps,
+                   newline=True)
 
 
 if __name__ == '__main__':
@@ -84,9 +89,10 @@ if __name__ == '__main__':
                         default=1,
                         type=float)
     parser.add_argument('--radius',
-                       help='The radius of the cutter. This is used to '
+                        help='The radius of the cutter. This is used to '
                             'compensate for its size in the position of the '
                             'cuts',
+                        default=0,
                         type=float)
 
     args = parser.parse_args()

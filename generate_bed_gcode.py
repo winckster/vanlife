@@ -1,12 +1,13 @@
 import argparse
 import math
 
-FAR_ABOVE = 50
+FAR_ABOVE = 5
 LENGTH_PADDING = 5
 DEFAULT_SPEED = 3000
+DEFAULT_STEP = 1
 
 
-def _write(write_fn, width, x_stop, y_step, z_step, num_steps, newline=False):
+def _write(write_fn, depth, x_stop, y_step, z_step, num_steps, radius, newline=False):
     if newline:
         def _format(x, y, z, f=DEFAULT_SPEED):
             return f'G1 X{x} Y{y} Z{z} F{f}\n'
@@ -14,18 +15,35 @@ def _write(write_fn, width, x_stop, y_step, z_step, num_steps, newline=False):
         def _format(x, y, z, f=DEFAULT_SPEED):
             return f'G1 X{x} Y{y} Z{z} F{f}'
     
-    write_fn(_format(0, width, FAR_ABOVE, 300))
-    write_fn(_format(0, width, 0, 300))
-    write_fn(_format(x_stop, width, 0))
+    # Start a radius distance outside the piece in y.
+    write_fn(_format(0, -radius, FAR_ABOVE, 300))
+    write_fn(_format(0, -radius, -depth, 300))
+
+    # Go in the y direction only for the width of the radius
+    initial_steps = int(radius / DEFAULT_STEP)
+    initial_right = range(1, initial_steps + 1, 2)
+    initial_left = range(2, initial_steps + 1, 2)
+    y = -radius
+    while(y + DEFAULT_STEP < 0):
+        write_fn(_format(x_stop, y, -depth))
+        y += DEFAULT_STEP
+        write_fn(_format(x_stop, y, -depth))
+        write_fn(_format(0, y, -depth))
+        y += DEFAULT_STEP
+        write_fn(_format(0, y, -depth))
+
+    # Starting at x,y origin, slope upwards.
+    write_fn(_format(0, 0, -depth))
+    write_fn(_format(x_stop, 0, -depth))
 
     right_steps = range(1, num_steps + 1, 2)
     left_steps = range(2, num_steps + 1, 2)
     for right, left in zip(right_steps, left_steps):
-        write_fn(_format(x_stop, width - right * y_step, -right * z_step))
-        write_fn(_format(0, width - right * y_step, -right * z_step))
-        write_fn(_format(0, width - left * y_step, -left * z_step))
-        write_fn(_format(x_stop, width - left * y_step, -left * z_step))
-    write_fn(_format(x_stop, width - left * y_step, FAR_ABOVE))
+        write_fn(_format(x_stop, right * y_step, right * z_step - depth))
+        write_fn(_format(0, right * y_step, right * z_step - depth))
+        write_fn(_format(0, left * y_step, left * z_step - depth))
+        write_fn(_format(x_stop, left * y_step, left * z_step - depth))
+    write_fn(_format(x_stop, left * y_step, FAR_ABOVE))
 
 def main(length, width, depth, max_step=1, path=None, radius=0):
     x_stop = length + LENGTH_PADDING
@@ -42,11 +60,11 @@ def main(length, width, depth, max_step=1, path=None, radius=0):
         num_steps = int(depth / max_step)
 
     if path is None:
-        _write(print, width, x_stop, y_step, z_step, num_steps)
+        _write(print, depth, x_stop, y_step, z_step, num_steps, radius)
     else:
         with open(path, 'w') as writer:
-            _write(writer.write, width, x_stop, y_step, z_step, num_steps,
-                   newline=True)
+            _write(writer.write, depth, x_stop, y_step, z_step, num_steps,
+                   radius, newline=True)
 
 
 if __name__ == '__main__':
